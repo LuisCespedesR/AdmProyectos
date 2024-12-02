@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrador de Proyectos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        header {
+            background-color: #343a40;
+            color: #fff;
+            padding: 15px 0;
+            text-align: center;
+            position: relative;
+        }
+        .logout-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: #dc3545;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .project-card {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        footer {
+            background-color: #343a40;
+            color: #fff;
+            padding: 10px 0;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #project-section, #admin-section {
+            display: none;
+        }
+        #login-section {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Administrador de Proyectos</h1>
+        <button class="logout-btn" id="logout-btn" style="display: none;">Cerrar Sesión</button>
+    </header>
+
+    <main class="container mt-4">
+        <!-- Login Section -->
+        <section id="login-section">
+            <h2 class="text-center">Iniciar Sesión</h2>
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <form id="login-form">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Usuario</label>
+                            <input type="text" id="username" class="form-control" placeholder="Ingrese su usuario" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <input type="password" id="password" class="form-control" placeholder="Ingrese su contraseña" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                        </div>
+                    </form>
+                    <div class="text-center mt-3">
+                        <button id="guest-btn" class="btn btn-secondary">Entrar como Invitado</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Project Section -->
+        <section id="project-section">
+            <h2 class="text-center mb-4">Proyectos Disponibles</h2>
+            <div class="row" id="project-list"></div>
+        </section>
+
+        <!-- Admin Section (For Admin Only) -->
+        <section id="admin-section">
+            <h2 class="text-center mb-4">Gestión de Proyectos</h2>
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-success" id="add-project-btn">Agregar Proyecto</button>
+            </div>
+            <div class="row" id="admin-project-list"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Administrador de Proyectos. Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+        const users = [
+            { username: 'admin', password: 'admin123', role: 'admin' },
+            { username: 'guest', password: 'guest123', role: 'guest' }
+        ];
+        const projects = JSON.parse(localStorage.getItem("projects")) || [
+            { name: 'Mi Biografía', url: 'https://luiscespedesr.github.io/MiBiografiaLACR/', description: 'Una página que muestra mi biografía.' },
+            { name: '102 Etiquetas', url: 'https://luiscespedesr.github.io/102etiquetas/', description: 'Proyecto de 102 etiquetas HTML para aprender estructuras básicas.' },
+            { name: 'Estructura de Menú', url: 'https://luiscespedesr.github.io/EstructuraMenu/', description: 'Página para mostrar una estructura dinámica de menú.' },
+            { name: 'Validación de Cédula', url: 'https://luiscespedesr.github.io/ValidacionCedu/', description: 'Validación de cédulas en un formulario.' },
+            { name: 'Menú Dinámico', url: 'https://luiscespedesr.github.io/MenuDinamico/', description: 'Página que presenta un menú dinámico para administrar opciones.' },
+            { name: 'Múltiples Páginas', url: 'https://luiscespedesr.github.io/multipaginasLCR/', description: 'Formulario con múltiples páginas para el registro de información.' },
+            { name: 'Generación de Código QR', url: 'https://luiscespedesr.github.io/CodigoQR/', description: 'Generador de códigos QR a partir de información registrada.' },
+            { name: 'Gráficos Interactivos', url: 'https://luiscespedesr.github.io/graficoLCR/', description: 'Interfaz para generar gráficos interactivos con datos.' }
+        ];
+
+        const loginForm = document.getElementById("login-form");
+        const guestButton = document.getElementById("guest-btn");
+        const loginSection = document.getElementById("login-section");
+        const projectSection = document.getElementById("project-section");
+        const adminSection = document.getElementById("admin-section");
+        const logoutButton = document.getElementById("logout-btn");
+        const addProjectButton = document.getElementById("add-project-btn");
+
+        // Show all projects (for Admin and Guest)
+        function displayProjects() {
+            const projectList = document.getElementById("project-list");
+            const adminProjectList = document.getElementById("admin-project-list");
+            projectList.innerHTML = "";
+            adminProjectList.innerHTML = "";
+            
+            projects.forEach((project, index) => {
+                const projectCard = `
+                    <div class="col-md-4">
+                        <div class="project-card p-3">
+                            <h5>${project.name}</h5>
+                            <p>${project.description}</p>
+                            <a href="${project.url}" target="_blank" class="btn btn-primary">Ver Proyecto</a>
+                            ${localStorage.getItem("role") === "admin" ? `<button class="btn btn-danger mt-2" onclick="deleteProject(${index})">Eliminar</button>` : ""}
+                        </div>
+                    </div>
+                `;
+                if (localStorage.getItem("role") === "admin") {
+                    adminProjectList.innerHTML += projectCard;
+                } else {
+                    projectList.innerHTML += projectCard;
+                }
+            });
+        }
+
+        // Login and Guest Access Logic
+        loginForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            const user = users.find(user => user.username === username && user.password === password);
+            if (user) {
+                localStorage.setItem("role", user.role);
+                alert("Inicio de sesión exitoso.");
+                loginSection.style.display = "none";
+                projectSection.style.display = "block";
+                logoutButton.style.display = "inline-block";
+
+                if (user.role === "admin") {
+                    adminSection.style.display = "block";
+                } else {
+                    adminSection.style.display = "none";
+                }
+
+                displayProjects();
+            } else {
+                alert("Usuario o contraseña incorrectos.");
+            }
+        });
+
+        guestButton.addEventListener("click", () => {
+            localStorage.setItem("role", "guest");
+            alert("Entraste como invitado.");
+            loginSection.style.display = "none";
+            projectSection.style.display = "block";
+            logoutButton.style.display = "inline-block";
+            adminSection.style.display = "none";
+            displayProjects();
+        });
+
+        logoutButton.addEventListener("click", () => {
+            localStorage.removeItem("role");
+            loginSection.style.display = "block";
+            projectSection.style.display = "none";
+            adminSection.style.display = "none";
+            logoutButton.style.display = "none";
+        });
+
+        // Add Project (for Admin)
+        addProjectButton.addEventListener("click", () => {
+            const name = prompt("Nombre del Proyecto:");
+            const url = prompt("URL del Proyecto:");
+            const description = prompt("Descripción del Proyecto:");
+            const newProject = { name, url, description };
+            projects.push(newProject);
+            localStorage.setItem("projects", JSON.stringify(projects));
+            displayProjects();
+        });
+
+        // Delete Project (for Admin)
+        function deleteProject(index) {
+            if (confirm("¿Estás seguro de eliminar este proyecto?")) {
+                projects.splice(index, 1);
+                localStorage.setItem("projects", JSON.stringify(projects));
+                displayProjects();
+            }
+        }
+
+        // Initial Setup
+        if (localStorage.getItem("role")) {
+            const role = localStorage.getItem("role");
+            loginSection.style.display = "none";
+            projectSection.style.display = "block";
+            logoutButton.style.display = "inline-block";
+
+            if (role === "admin") {
+                adminSection.style.display = "block";
+            } else {
+                adminSection.style.display = "none";
+            }
+            displayProjects();
+        }
+    </script>
+</body>
+</html>
+
+
